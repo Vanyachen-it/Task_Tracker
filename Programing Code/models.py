@@ -12,7 +12,7 @@ class User:
         return self.role
         
 class Project:
-    def __init__(self, project_id: int, project_name: str, owneк_id: int):
+    def __init__(self, project_id: int, project_name: str, owner_id: int):
     self.id: int = project_id
     self.project_name: str = project_name
     self.owner_id: int = owner_id
