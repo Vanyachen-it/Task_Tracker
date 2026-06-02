@@ -39,4 +39,4 @@ class ApplicationLauncher(ctk.CTk):
         self.grid_rowconfigure(0, weight=1)
 
         self.left_pane = ctk.CTkFrame(self, fg_color="transparent")
-        self.left+pane.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+        self.left_pane.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
