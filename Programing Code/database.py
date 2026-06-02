@@ -26,8 +26,29 @@ def create_tables(self):
         cursor.execute("CREATE TABLE IF NOT EXISTS categories (id INTEGER PRIMATY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE);")
         cursor.execute("CREATE TABLE IF NOT EXISTS projects (id INTEGER PRIMATY KEY AUTOINCREMENT, project_name TEXT NOT NULL, owner_id INTEGER NOT NULL, category_id INTEGER, FOREIGHN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE, FOREIGN KEY (catery_id) REFERENCES categories(id));")
         cursor.execute("CREATE TABLE IF NOT EXISTS tasks (id INTEGER PRIMATY KEY AUTOINCREMENT, task_name TEXT NO NULL, status TEXT NOT NULL DEFAULT 'New', project_id INTEGER NOT NULL, executor_id INTEGER, priority TETX DEFAULT 'Medium', created_at TEXT DEFAULT (date('now')), FOREIGN KEY (project_id) REFERENCES projects(id) ON DELETE CASCADE, FOREIGN KEY (executor_id) REFERENCES users(id));")
-        cursor.execute("CREATE TABLE IF NOT EXISTS
-        cursor.execute("CREATE TABLE IF NOT EXISTS
-        cursor.execute("CREATE TABLE IF NOT EXISTS
-        cursor.execute("CREATE TABLE IF NOT EXISTS
-            
+        cursor.execute("CREATE TABLE IF NOT EXISTS time_logs (id INTEGER PRIMATY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, hours REAL, FOREGEIN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);")
+        cursor.execute("CREATE TABLE IF NOT EXISTS task_comments (id INTEGER PRIMATY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, text TEXT, FOREGEIN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);")
+        cursor.execute("CREATE TABLE IF NOT EXISTS notification (id INTEGER PRIMATY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, msg TEXT, FOREGEIN KEY, (user_id) REFERENCES users(id) ON DELETE CASCADE);")
+        cursor.execute("CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMATY KEY AUTOINCREMENT, level TEXT, message TEXT, timestamp TEXT);")
+        self.comm.commit()
+
+def execute_secure(self, query, params=()):
+    with self._lock:
+        cursor = self.conn.cursor()
+        try:
+            cursor.execute(query, params)
+            self.conn.commit()
+            return cursor
+        except sqlite3.Error as e:
+            self.conn.rollback()
+            self.log_event("CRITICAL", f"Database Error: {str(e)}" -> Query: {query}")
+            raise e
+
+def log_event(self,, level, message):
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    with self._lock:
+        cursor = self.conn.cursor()
+        cursor.execute("INSERT INTO audit_logs (level, message, timestamp) VALUES (?, ?, ?)", (level, message, now)) 
+        self.conn.commit()
+
+//Вроде это последняя правка         
