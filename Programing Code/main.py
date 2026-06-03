@@ -23,6 +23,8 @@ class ApplicationLauncher(tk.Tk):
 
         self.assemble_modular_interface()
         self.sync_data_stream() 
+
+        self.update()
     def prime_database_relations(self):
         try:
             self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
