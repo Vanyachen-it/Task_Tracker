@@ -13,31 +13,20 @@ class ApplicationLauncher(tk.Tk):
         self.title(f"TaskTracker Pro Enterprise [{APP_VERSION}]")
         self.geometry("1100x680")
         
-        self.assemble_modular_interface()
+        self.db = DatabaseManager()
+        self.facade = TaskTrackerFacade()
         
-        self.update_idletasks()
-        self.update()
-        
-        self.after(500, self.delayed_init)
-
-    def delayed_init(self):
         try:
-            self.db = DatabaseManager()
-            self.facade = TaskTrackerFacade()
-            
             self.db.execute_secure("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
             SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
-            self.prime_database_relations()
-            self.sync_data_stream()
-        except Exception as e:
-            print(f"Инфо: Бэкенд запущен автономно: {e}")
-
-    def prime_database_relations(self):
-        try:
             self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
             self.db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Ивана Кашко', 1, 1)")
         except Exception:
             pass
+            
+        self.assemble_modular_interface()
+        
+        self.sync_data_stream()
 
     def assemble_modular_interface(self):
         main_frame = tk.Frame(self)
@@ -88,7 +77,7 @@ class ApplicationLauncher(tk.Tk):
         right_pane.pack(side="right", fill="both", expand=True, padx=(10, 0))
 
         tk.Label(right_pane, text="Аналитическое ядро (Data Science)", font=("Helvetica", 12, "bold")).pack(anchor="w", pady=(0, 15))
-        self.box_charts = tk.Frame(right_pane, height=240)
+        self.box_charts = tk.Frame(right_pane, height=240, bg="#eaeaea")
         self.box_charts.pack(fill="x")
 
         tk.Label(right_pane, text="Консоль аудита ядра системы (Лог транзакций)", font=("Helvetica", 11, "bold")).pack(anchor="w", pady=(15, 5))
@@ -100,13 +89,18 @@ class ApplicationLauncher(tk.Tk):
         try:
             p_id = int(self.in_proj.get().strip())
         except ValueError:
+            messagebox.showerror("Ошибка", "ID Проекта должен быть числом!")
             return
+            
         self.facade.async_add_task_pipeline(name, p_id, self.in_priority.get(), self.post_commit_callback)
 
     def post_commit_callback(self, success, msg):
         if success:
             self.in_name.delete(0, 'end')
             self.sync_data_stream()
+            messagebox.showinfo("Успех", "Транзакция успешно зафиксирована в SQLite!")
+        else:
+            messagebox.showerror("Ошибка СУБД", f"Отказ транзакции: {msg}")
 
     def sync_data_stream(self):
         for item in self.tree.get_children():
@@ -114,18 +108,24 @@ class ApplicationLauncher(tk.Tk):
         
         try:
             cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
-            for row in cursor.fetchall():
-                self.tree.insert("", "end", values=row)
+            rows = cursor.fetchall()
+            if rows:
+                for row in rows:
+                    self.tree.insert("", "end", values=row)
         except Exception:
             pass
             
+
         self.console.delete("1.0", "end")
         try:
-            cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 20")
-            for log in cursor_logs.fetchall():
-                self.console.insert("end", f"[{log}] {log}: {log}\n")
+            cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 15")
+            logs = cursor_logs.fetchall()
+            if logs:
+                for log in logs:
+                    log_text = f"[{log[0]}] {log[1]}: {log[2]}\n"
+                    self.console.insert("end", log_text)
         except Exception:
-            pass
+            self.console.insert("end", "[INFO] Системный пул логов пуст. Ожидание транзакций...\n")
 
 if __name__ == "__main__":
     app = ApplicationLauncher()
