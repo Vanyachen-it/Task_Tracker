@@ -1,4 +1,4 @@
-DATABASE_NAME = 'taskflow.db'
+DATABASE_NAME = ':memory:'
 SALT = "TaskTrackerSalt_2026_Enterprise_"
 DEFAULT_THEME = "Dark"
 COLOR_THEME = "blue"
