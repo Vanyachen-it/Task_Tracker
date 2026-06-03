@@ -11,10 +11,8 @@ class DatabaseManager:
         with cls._lock:
             if cls._instance is None:
                 cls._instance = super(DatabaseManager, cls).__new__(cls)
-                cls._instance = super(DatabaseManager, cls).__new__(cls)
                 cls._instance.conn = sqlite3.connect(DATABASE_NAME, check_same_thread=False)
                 cls._instance.conn.execute("PRAGMA foreign_keys = ON;")
-                cls._instance.conn.execute("PRAGMA journal_mode = WAL;")
                 cls._instance.create_tables()
         return cls._instance
 
@@ -50,4 +48,4 @@ class DatabaseManager:
         with self._lock:
             cursor = self.conn.cursor()
             cursor.execute("INSERT INTO audit_logs (level, message, timestamp) VALUES (?, ?, ?)", (level, message, now))
-            self.conn.commit()                  
+            self.conn.commit()
