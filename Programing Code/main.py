@@ -101,7 +101,7 @@ class ApplicationLauncher(tk.Tk):
             self.in_name.delete(0, 'end')
             self.sync_data_stream()
 ########################
- def sync_data_stream(self):
+    def sync_data_stream(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
         
