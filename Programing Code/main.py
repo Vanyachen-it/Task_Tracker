@@ -100,20 +100,22 @@ class ApplicationLauncher(tk.Tk):
         if success:
             self.in_name.delete(0, 'end')
             self.sync_data_stream()
-
+########################
     def sync_data_stream(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
         cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
         for row in cursor.fetchall():
             self.tree.insert("", "end", values=row)
-            
+
         AnalyticsEngine.render_horizontal_bar_chart(self.box_charts, self.facade.fetch_bi_metrics())
-        
+
         self.console.delete("1.0", "end")
         cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 20")
         for log in cursor_logs.fetchall():
             self.console.insert("end", f"[{log[0]}] {log[1]}: {log[2]}\n")
+            
+#########################
 
 if __name__ == "__main__":
     app = ApplicationLauncher()
