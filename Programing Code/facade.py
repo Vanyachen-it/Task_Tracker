@@ -8,7 +8,7 @@ class TaskTrackerFacade:
 
     def async_add_task_pipeline (self, name, project_id, priority, callback):
         def worker():
-            if nor name or not project_id:
+            if not name or not project_id:
                 self.db.log_event("WARNING", "Валидация отклонена: Пустые входящие данные формы UI")
                 callback(False, "Поля не могут быть пустыми")
                 return
