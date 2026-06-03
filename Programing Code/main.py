@@ -40,3 +40,7 @@ class ApplicationLauncher(ctk.CTk):
 
         self.left_pane = ctk.CTkFrame(self, fg_color="transparent")
         self.left_pane.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+
+        ctk.CTkLabel(self.left_pane, text="Архитектура модулей (8 файлов)", font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(0,15))
+
+        self/wrapper_form = ctk.CTkFrame(self.left_pane, corner_radius=12)
