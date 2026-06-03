@@ -30,7 +30,7 @@ def create_tables(self):
         cursor.execute("CREATE TABLE IF NOT EXISTS task_comments (id INTEGER PRIMATY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, text TEXT, FOREGEIN KEY (task_id) REFERENCES tasks(id) ON DELETE CASCADE);")
         cursor.execute("CREATE TABLE IF NOT EXISTS notification (id INTEGER PRIMATY KEY AUTOINCREMENT, user_id INTEGER NOT NULL, msg TEXT, FOREGEIN KEY, (user_id) REFERENCES users(id) ON DELETE CASCADE);")
         cursor.execute("CREATE TABLE IF NOT EXISTS audit_logs (id INTEGER PRIMATY KEY AUTOINCREMENT, level TEXT, message TEXT, timestamp TEXT);")
-        self.comm.commit()
+        self.conn.commit()
 
 def execute_secure(self, query, params=()):
     with self._lock:
@@ -41,10 +41,10 @@ def execute_secure(self, query, params=()):
             return cursor
         except sqlite3.Error as e:
             self.conn.rollback()
-            self.log_event("CRITICAL", f"Database Error: {str(e)} -> Query: {query}")
+            self.log_event("CRITICAL", f"Database Error: {str(e)}")
             raise e
 
-def log_event(self,, level, message):
+def log_event(self, level, message):
     now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     with self._lock:
         cursor = self.conn.cursor()
