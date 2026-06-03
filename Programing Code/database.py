@@ -50,5 +50,4 @@ class DatabaseManager:
         with self._lock:
             cursor = self.conn.cursor()
             cursor.execute("INSERT INTO audit_logs (level, message, timestamp) VALUES (?, ?, ?)", (level, message, now))
-            self.conn.commit()
-)
+            self.conn.commit()                  
