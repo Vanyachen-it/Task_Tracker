@@ -19,7 +19,7 @@ class ApplicationLauncher(ctk.CTk):
         self.db = DatabaseManager()
         self.facade = TaskTrackerFacade()
 
-        self.db.execute_secure("INSERT OR IGNORE INTO roles (id,role_name) VALUES (1, 'Admin')")
+        self.db.conn.execute("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
         SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
         self.prime_database_relations()
 
@@ -28,8 +28,8 @@ class ApplicationLauncher(ctk.CTk):
 
     def prime_database_relations(self):
         try:
-            self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
-            self.db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Иван Кашко', 1, 1)")
+            self.db.conn.execute("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
+            self.db.conn.execute("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Иван Кашко', 1, 1)")
         except Exception:
             pass
 
