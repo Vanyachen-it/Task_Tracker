@@ -41,7 +41,7 @@ def execute_secure(self, query, params=()):
             return cursor
         except sqlite3.Error as e:
             self.conn.rollback()
-            self.log_event("CRITICAL", f"Database Error: {str(e)}" -> Query: {query}")
+            self.log_event("CRITICAL", f"Database Error: {str(e)} -> Query: {query}")
             raise e
 
 def log_event(self,, level, message):
