@@ -32,5 +32,3 @@ class AnalyticsEngine:
         canvas.draw()
         canvas.get_tk_widget().pack(fill="both", expand=True)
         plt.close(fig)
-
-//Доделан
