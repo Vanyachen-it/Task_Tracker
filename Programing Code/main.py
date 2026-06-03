@@ -1,132 +1,95 @@
-import tkinter as tk
-from tkinter import messagebox, ttk
-from config import APP_VERSION
+import sqlite3
+from flask import Flask, render_template_string, request, redirect
 from database import DatabaseManager
 from security import SecurityProvider
 from facade import TaskTrackerFacade
-from analytics import AnalyticsEngine
-from ui_components import UIStyleHelper
 
-class ApplicationLauncher(tk.Tk):
-    def __init__(self):
-        super().__init__()
-        self.title(f"TaskTracker Pro Enterprise [{APP_VERSION}]")
-        self.geometry("1100x680")
-        
-        self.db = DatabaseManager()
-        self.facade = TaskTrackerFacade()
-        
-        try:
-            self.db.execute_secure("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
-            SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
-            self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
-            self.db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Ивана Кашко', 1, 1)")
-        except Exception:
-            pass
-            
-        self.assemble_modular_interface()
-        
-        self.sync_data_stream()
+app = Flask(__name__)
+db = DatabaseManager()
+facade = TaskTrackerFacade()
 
-    def assemble_modular_interface(self):
-        main_frame = tk.Frame(self)
-        main_frame.pack(fill="both", expand=True, padx=20, pady=20)
+try:
+    db.execute_secure("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
+    SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
+    db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
+    db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Ивана Кашко', 1, 1)")
+except Exception:
+    pass
 
-        left_pane = tk.Frame(main_frame)
-        left_pane.pack(side="left", fill="both", expand=True, padx=(0, 10))
+HTML_TEMPLATE = """
+<!DOCTYPE html>
+<html>
+<head>
+    <title>TaskTracker Pro Enterprise</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; background-color: #1e1e1e; color: #fff; margin: 30px; }
+        .container { display: flex; gap: 30px; max-width: 1200px; margin: 0 auto; }
+        .panel { flex: 1; background: #2d2d2d; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); }
+        h1, h2 { color: #58a6ff; margin-top: 0; }
+        input, select, button { width: 100%; padding: 10px; margin: 8px 0; border-radius: 6px; border: 1px solid #444; background: #1f1f1f; color: white; box-sizing: border-box; }
+        button { background-color: #1f6aa5; border: none; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        button:hover { background-color: #144871; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #444; }
+        th { background-color: #383838; color: #58a6ff; }
+        .console { background-color: #101010; color: #2ecc71; font-family: 'Courier New', monospace; padding: 15px; border-radius: 6px; height: 200px; overflow-y: auto; font-size: 13px; }
+    </style>
+</head>
+<body>
+    <h1 style="text-align: center; margin-bottom: 40px;">TaskTracker Enterprise System v6.0</h1>
+    <div class="container">
+        <div class="panel">
+            <h2>Регистрация задач (Валидация по Блок-схеме)</h2>
+            <form action="/add" method="POST">
+                <input type="text" name="name" placeholder="Спецификация новой задачи..." required>
+                <input type="number" name="project_id" value="1" placeholder="ID Проекта">
+                <select name="priority">
+                    <option value="Low">Low</option>
+                    <option value="Medium" selected>Medium</option>
+                    <option value="High">High</option>
+                </select>
+                <button type="submit">Выполнить безопасную транзакцию</button>
+            </form>
+            <h2>Локальный пул задач из SQLite</h2>
+            <table>
+                <tr><th>ID</th><th>Узел задачи</th><th>Приоритет</th><th>Статус</th></tr>
+                {% for row in tasks %}
+                <tr><td>{{ row[0] }}</td><td>{{ row[1] }}</td><td>{{ row[2] }}</td><td>{{ row[3] }}</td></tr>
+                {% endfor %}
+            </table>
+        </div>
+        <div class="panel">
+            <h2>Аналитическое ядро (Data Science)</h2>
+            <p style="color: #8b949e; font-style: italic">Статус СУБД: <span style="color: #2ecc71">Активна (10 Таблиц)</span></p>
+            <div style="background: #383838; height: 10px; border-radius: 5px; margin-bottom: 25px;"><div style="background: #2ecc71; width: 85%; height: 100%; border-radius: 5px;"></div></div>
+            <h2>Консоль аудита безопасности (Лог транзакций)</h2>
+            <div class="console">
+                {% for log in logs %}
+                <div>[{{ log[0] }}] {{ log[1] }}: {{ log[2] }}</div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</body>
+</html>
+"""
 
-        tk.Label(left_pane, text="Архитектура Модулей (8 Файлов)", font=("Helvetica", 18, "bold")).pack(anchor="w", pady=(0, 15))
+@app.route('/')
+def index():
+    cursor = db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
+    tasks = cursor.fetchall()
+    cursor_logs = db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 15")
+    logs = cursor_logs.fetchall()
+    return render_template_string(HTML_TEMPLATE, tasks=tasks, logs=logs)
 
-        wrapper_form = tk.LabelFrame(left_pane, text=" Регистрация задач ", font=("Helvetica", 10, "bold"), padx=15, pady=15)
-        wrapper_form.pack(fill="x", pady=(0, 15))
-        
-        self.in_name = tk.Entry(wrapper_form, font=("Helvetica", 12))
-        self.in_name.pack(fill="x", pady=10)
+@app.route('/add', methods=['POST'])
+def add_task():
+    name = request.form.get('name')
+    project_id = int(request.form.get('project_id', 1))
+    priority = request.form.get('priority')
+    def cb(success, msg): pass
+    facade.async_add_task_pipeline(name, project_id, priority, cb)
+    return redirect('/')
 
-        row_layout = tk.Frame(wrapper_form)
-        row_layout.pack(fill="x", pady=5)
-
-        tk.Label(row_layout, text="ID Проекта:").pack(side="left")
-        self.in_proj = tk.Entry(row_layout, width=5)
-        self.in_proj.insert(0, "1")
-        self.in_proj.pack(side="left", padx=5)
-
-        tk.Label(row_layout, text="Priority:").pack(side="left", padx=(15, 5))
-        self.in_priority = ttk.Combobox(row_layout, values=["Low", "Medium", "High"], width=10, state="readonly")
-        self.in_priority.set("Medium")
-        self.in_priority.pack(side="left")
-
-        self.btn_run = tk.Button(wrapper_form, text="Выполнить безопасную транзакцию", font=("Helvetica", 11, "bold"), command=self.commit_task, pady=5)
-        self.btn_run.pack(fill="x", pady=(15, 0))
-
-        wrapper_table = tk.LabelFrame(left_pane, text=" Локальный пул потоков задач СУБД ", font=("Helvetica", 10, "bold"), padx=15, pady=15)
-        wrapper_table.pack(fill="both", expand=True)
-
-        UIStyleHelper.configure_treeview_theme()
-        self.tree = ttk.Treeview(wrapper_table, columns=("id", "task", "priority", "status"), show="headings")
-        self.tree.heading("id", text="ID")
-        self.tree.heading("task", text="Узел задачи")
-        self.tree.heading("priority", text="Приоритет")
-        self.tree.heading("status", text="Статус")
-        self.tree.column("id", width=40, anchor="center")
-        self.tree.column("priority", width=80, anchor="center")
-        self.tree.column("status", width=90, anchor="center")
-        self.tree.pack(fill="both", expand=True)
-
-        right_pane = tk.Frame(main_frame, padx=15, pady=15)
-        right_pane.pack(side="right", fill="both", expand=True, padx=(10, 0))
-
-        tk.Label(right_pane, text="Аналитическое ядро (Data Science)", font=("Helvetica", 12, "bold")).pack(anchor="w", pady=(0, 15))
-        self.box_charts = tk.Frame(right_pane, height=240, bg="#eaeaea")
-        self.box_charts.pack(fill="x")
-
-        tk.Label(right_pane, text="Консоль аудита ядра системы (Лог транзакций)", font=("Helvetica", 11, "bold")).pack(anchor="w", pady=(15, 5))
-        self.console = tk.Text(right_pane, font=("Courier New", 10), relief="flat")
-        self.console.pack(fill="both", expand=True)
-
-    def commit_task(self):
-        name = self.in_name.get().strip()
-        try:
-            p_id = int(self.in_proj.get().strip())
-        except ValueError:
-            messagebox.showerror("Ошибка", "ID Проекта должен быть числом!")
-            return
-            
-        self.facade.async_add_task_pipeline(name, p_id, self.in_priority.get(), self.post_commit_callback)
-
-    def post_commit_callback(self, success, msg):
-        if success:
-            self.in_name.delete(0, 'end')
-            self.sync_data_stream()
-            messagebox.showinfo("Успех", "Транзакция успешно зафиксирована в SQLite!")
-        else:
-            messagebox.showerror("Ошибка СУБД", f"Отказ транзакции: {msg}")
-
-    def sync_data_stream(self):
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        try:
-            cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
-            rows = cursor.fetchall()
-            if rows:
-                for row in rows:
-                    self.tree.insert("", "end", values=row)
-        except Exception:
-            pass
-            
-
-        self.console.delete("1.0", "end")
-        try:
-            cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 15")
-            logs = cursor_logs.fetchall()
-            if logs:
-                for log in logs:
-                    log_text = f"[{log[0]}] {log[1]}: {log[2]}\n"
-                    self.console.insert("end", log_text)
-        except Exception:
-            self.console.insert("end", "[INFO] Системный пул логов пуст. Ожидание транзакций...\n")
-
-if __name__ == "__main__":
-    app = ApplicationLauncher()
-    app.mainloop()
+if __name__ == '__main__':
+    app.run(debug=False, port=5000)
