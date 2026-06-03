@@ -8,24 +8,23 @@ from analytics import AnalyticsEngine
 from ui_components import UIStyleHelper
 
 class ApplicationLauncher(tk.Tk):
-    def init(self):
-        super().init()
+    def __init__(self):
+        super().__init__()
         self.title(f"TaskTracker Pro Enterprise [{APP_VERSION}]")
         self.geometry("1100x680")
-
+        
         self.assemble_modular_interface()
-
+        
         self.update_idletasks()
         self.update()
-
+        
         self.after(500, self.delayed_init)
 
     def delayed_init(self):
-        """Безопасный запуск бэкенда ПОСЛЕ прорисовки графики"""
         try:
             self.db = DatabaseManager()
             self.facade = TaskTrackerFacade()
-
+            
             self.db.execute_secure("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
             SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
             self.prime_database_relations()
@@ -38,8 +37,9 @@ class ApplicationLauncher(tk.Tk):
             self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
             self.db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Ивана Кашко', 1, 1)")
         except Exception:
-            pass 
-def assemble_modular_interface(self):
+            pass
+
+    def assemble_modular_interface(self):
         main_frame = tk.Frame(self)
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
@@ -50,7 +50,7 @@ def assemble_modular_interface(self):
 
         wrapper_form = tk.LabelFrame(left_pane, text=" Регистрация задач ", font=("Helvetica", 10, "bold"), padx=15, pady=15)
         wrapper_form.pack(fill="x", pady=(0, 15))
-
+        
         self.in_name = tk.Entry(wrapper_form, font=("Helvetica", 12))
         self.in_name.pack(fill="x", pady=10)
 
@@ -72,7 +72,8 @@ def assemble_modular_interface(self):
 
         wrapper_table = tk.LabelFrame(left_pane, text=" Локальный пул потоков задач СУБД ", font=("Helvetica", 10, "bold"), padx=15, pady=15)
         wrapper_table.pack(fill="both", expand=True)
-UIStyleHelper.configure_treeview_theme()
+
+        UIStyleHelper.configure_treeview_theme()
         self.tree = ttk.Treeview(wrapper_table, columns=("id", "task", "priority", "status"), show="headings")
         self.tree.heading("id", text="ID")
         self.tree.heading("task", text="Узел задачи")
@@ -96,7 +97,7 @@ UIStyleHelper.configure_treeview_theme()
 
     def commit_task(self):
         name = self.in_name.get().strip()
-try:
+        try:
             p_id = int(self.in_proj.get().strip())
         except ValueError:
             return
@@ -110,14 +111,14 @@ try:
     def sync_data_stream(self):
         for item in self.tree.get_children():
             self.tree.delete(item)
-
+        
         try:
             cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
             for row in cursor.fetchall():
                 self.tree.insert("", "end", values=row)
         except Exception:
             pass
-
+            
         self.console.delete("1.0", "end")
         try:
             cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 20")
@@ -126,6 +127,6 @@ try:
         except Exception:
             pass
 
-if name == "main":
+if __name__ == "__main__":
     app = ApplicationLauncher()
     app.mainloop()
