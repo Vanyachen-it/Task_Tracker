@@ -12,7 +12,7 @@ class ApplicationLauncher(tk.Tk):
         super().init()
         self.title(f"TaskTracker Pro Enterprise [{APP_VERSION}]")
         self.geometry("1100x680")
-        self.configure(bg="#2a2a2a")
+        #self.configure(bg="#2a2a2a")
 
         self.db = DatabaseManager()
         self.facade = TaskTrackerFacade()
@@ -23,7 +23,7 @@ class ApplicationLauncher(tk.Tk):
 
         self.assemble_modular_interface()
         self.sync_data_stream() 
-
+        self.update_idletasks()
         self.update()
     def prime_database_relations(self):
         try:
@@ -33,6 +33,7 @@ class ApplicationLauncher(tk.Tk):
             pass
 
     def assemble_modular_interface(self):
+        main_frame = tk.Frame(self)
         main_frame = tk.Frame(self, bg="#2a2a2a")
         main_frame.pack(fill="both", expand=True, padx=20, pady=20)
 
