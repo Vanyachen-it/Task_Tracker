@@ -111,6 +111,6 @@ class ApplicationLauncher(ctk.CTk):
         for log in cursor_logs.fetchall():
             self.console.insert("end", f"[{log[0]}] {log[1]}: {log[2]}\n")
 
-if name == "main":
+if __name__ == "__main__":
     app = ApplicationLauncher()
     app.mainloop()
