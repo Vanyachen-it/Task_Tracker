@@ -1,80 +1,114 @@
-import sys
-import time
-import sqlite3
+import customtkinter as ctk
+from tkinter import messagebox, ttk
+from config import DEFAULT_THEME, COLOR_THEME, APP_VERSION
 from database import DatabaseManager
 from security import SecurityProvider
 from facade import TaskTrackerFacade
+from analytics import AnalyticsEngine
+from ui_components import UIStyleHelper
 
-class ConsoleApplication:
+ctk.set_appearance_mode(DEFAULT_THEME)
+ctk.set_default_color_theme(COLOR_THEME)
+
+class ApplicationLauncher(ctk.CTk):
     def __init__(self):
-        print("="*60)
-        print("  TASKTRACKER PRO ENTERPRISE CORE ENGINE v6.0.4  ")
-        print("="*60)
-        print("[INFO] Инициализация ядра системы...")
+        super().__init__()
+        self.title(f"TaskTracker Pro Enterprise [{APP_VERSION}]")
+        self.geometry("1100x680")
         
         self.db = DatabaseManager()
         self.facade = TaskTrackerFacade()
         
-        # Первичное наполнение СУБД
         self.db.execute_secure("INSERT OR IGNORE INTO roles (id, role_name) VALUES (1, 'Admin')")
         SecurityProvider.register_secure_user("Иван Кашко", "secure_root_2026", 1)
+        self.prime_database_relations()
         
+        self.assemble_modular_interface()
+        self.sync_data_stream()
+
+    def prime_database_relations(self):
         try:
             self.db.execute_secure("INSERT OR IGNORE INTO categories (id, name) VALUES (1, 'Архитектура ПО')")
             self.db.execute_secure("INSERT OR IGNORE INTO projects (id, project_name, owner_id, category_id) VALUES (1, 'Репозиторий Ивана Кашко', 1, 1)")
         except Exception:
             pass
-            
-        print("[SUCCESS] База данных развернута (10 таблиц активны).")
-        print("[SECURITY] Защита от SQL-инъекций и хэширование включены.")
-        print("="*60)
 
-    def run(self):
-        while True:
-            print("\nДоступные операции:")
-            print("1. Посмотреть текущий пул задач (Таблица tasks)")
-            print("2. Создать новую задачу (Безопасная транзакция)")
-            print("3. Посмотреть логи аудита безопасности (Таблица audit_logs)")
-            print("4. Выйти из системы")
+    def assemble_modular_interface(self):
+        self.grid_columnconfigure(0, weight=4, minsize=450)
+        self.grid_columnconfigure(1, weight=3, minsize=350)
+        self.grid_rowconfigure(0, weight=1)
+
+        self.left_pane = ctk.CTkFrame(self, fg_color="transparent")
+        self.left_pane.grid(row=0, column=0, sticky="nsew", padx=20, pady=20)
+
+        ctk.CTkLabel(self.left_pane, text="Архитектура Модулей (8 Файлов)", font=ctk.CTkFont(size=24, weight="bold")).pack(anchor="w", pady=(0, 15))
+
+        self.wrapper_form = ctk.CTkFrame(self.left_pane, corner_radius=12)
+        self.wrapper_form.pack(fill="x", pady=(0, 15))
+        
+        self.in_name = ctk.CTkEntry(self.wrapper_form, placeholder_text="Спецификация новой задачи...", height=35)
+        self.in_name.pack(fill="x", padx=15, pady=10)
+
+        self.row_layout = ctk.CTkFrame(self.wrapper_form, fg_color="transparent")
+        self.row_layout.pack(fill="x", padx=15, pady=5)
+
+        self.in_proj = ctk.CTkEntry(self.row_layout, placeholder_text="ID Проекта", width=90)
+        self.in_proj.insert(0, "1")
+        self.in_proj.pack(side="left")
+
+        self.in_priority = ctk.CTkComboBox(self.row_layout, values=["Low", "Medium", "High"], width=120)
+        self.in_priority.set("Medium")
+        self.in_priority.pack(side="left", padx=10)
+
+        self.btn_run = ctk.CTkButton(self.wrapper_form, text="Выполнить безопасную транзакцию", fg_color="#1f6aa5", command=self.commit_task)
+        self.btn_run.pack(fill="x", padx=15, pady=15)
+
+        self.wrapper_table = ctk.CTkFrame(self.left_pane, corner_radius=12)
+        self.wrapper_table.pack(fill="both", expand=True)
+
+        UIStyleHelper.configure_treeview_theme()
+        self.tree = ttk.Treeview(self.wrapper_table, columns=("id", "task", "priority", "status"), show="headings")
+        self.tree.heading("id", text="ID"); self.tree.heading("task", text="Узел задачи"); self.tree.heading("priority", text="Приоритет"); self.tree.heading("status", text="Статус")
+        self.tree.column("id", width=40, anchor="center"); self.tree.column("priority", width=80, anchor="center"); self.tree.column("status", width=90, anchor="center")
+        self.tree.pack(fill="both", expand=True, padx=15, pady=15)
+        self.right_pane = ctk.CTkFrame(self, corner_radius=15, fg_color="#1e1e1e")
+        self.right_pane.grid(row=0, column=1, sticky="nsew", padx=20, pady=20)
+
+        ctk.CTkLabel(self.right_pane, text="Аналитическое ядро (Data Science)", font=ctk.CTkFont(size=14, weight="bold")).pack(anchor="w", padx=20, pady=15)
+        self.box_charts = ctk.CTkFrame(self.right_pane, fg_color="transparent", height=240)
+        self.box_charts.pack(fill="x", padx=20)
+
+        ctk.CTkLabel(self.right_pane, text="Консоль аудита ядра системы (Лог транзакций)", font=ctk.CTkFont(size=12, weight="bold")).pack(anchor="w", padx=20, pady=(15, 5))
+        self.console = ctk.CTkTextbox(self.right_pane, font=("Courier New", 11), fg_color="#101010", text_color="#2ecc71")
+        self.console.pack(fill="both", expand=True, padx=20, pady=(0, 20))
+
+    def commit_task(self):
+        name = self.in_name.get().strip()
+        try:
+            p_id = int(self.in_proj.get().strip())
+        except ValueError:
+            return
+        self.facade.async_add_task_pipeline(name, p_id, self.in_priority.get(), self.post_commit_callback)
+
+    def post_commit_callback(self, success, msg):
+        if success:
+            self.in_name.delete(0, 'end')
+            self.sync_data_stream()
+
+    def sync_data_stream(self):
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
+        for row in cursor.fetchall():
+            self.tree.insert("", "end", values=row)
             
-            choice = input("\nВыберите действие (1-4): ").strip()
-            
-            if choice == "1":
-                print("\n--- ТЕКУЩИЕ ЗАДАЧИ В СУБД ---")
-                cursor = self.db.execute_secure("SELECT id, task_name, priority, status FROM tasks")
-                rows = cursor.fetchall()
-                if not rows:
-                    print("[Инфо] Список задач пуст.")
-                for row in rows:
-                    print(f"ID: {row[0]} | Задача: {row[1]} | Приоритет: {row[2]} | Статус: {row[3]}")
-                    
-            elif choice == "2":
-                name = input("Введите название новой задачи: ").strip()
-                priority = input("Введите приоритет (Low/Medium/High): ").strip() or "Medium"
-                
-                print("[PROCESS] Валидация по блок-схеме и отправка в Facade...")
-                
-                def callback(success, message):
-                    if success:
-                        print("[SUCCESS] Задача успешно добавлена в базу данных!")
-                    else:
-                        print(f"[ERROR] Отказ транзакции: {message}")
-                        
-                self.facade.async_add_task_pipeline(name, 1, priority, callback)
-                time.sleep(0.2)
-                
-            elif choice == "3":
-                print("\n--- КОНСОЛЬ АУДИТА БЕЗОПАСНОСТИ ЯДРА ---")
-                cursor = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 10")
-                for row in cursor.fetchall():
-                    print(f"[{row[0]}] {row[1]}: {row[2]}")
-                    
-            elif choice == "4":
-                print("\n[INFO] Корректное завершение работы СУБД. До свидания!")
-                sys.exit(0)
-            else:
-                print("[WARNING] Неверный ввод. Выберите пункт от 1 до 4.")
+        AnalyticsEngine.render_horizontal_bar_chart(self.box_charts, self.facade.fetch_bi_metrics())
+        
+        self.console.delete("1.0", "end")
+        cursor_logs = self.db.execute_secure("SELECT timestamp, level, message FROM audit_logs ORDER BY id DESC LIMIT 20")
+        for log in cursor_logs.fetchall():
+            self.console.insert("end", f"[{log[0]}] {log[1]}: {log[2]}\n")
 
 if __name__ == "__main__":
-    app = ConsoleApplication()
-    app.run()
+    app = ApplicationLauncher()
+    app.mainloop()
