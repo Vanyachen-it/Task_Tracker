@@ -17,7 +17,7 @@ class AnalyticsEngine:
         values = [row[1] for row in data]
 
         is_dark = ctk.get_appearance_mode() == "Dark"
-        fig, ax = plt.subplots(figsize=(3.8, 2.4) facecolor="#1e1e1e" if is_dark else "#dbdbdb")
+        fig, ax = plt.subplots(figsize=(3.8, 2.4), facecolor="#1e1e1e" if is_dark else "#dbdbdb")
         ax.set_facecolor("#1e1e1e" if is_dark else "#dbdbdb")
 
         ax.barh(labels, values, color="#1f6aa5", edgecolor="none", height=0.4)
