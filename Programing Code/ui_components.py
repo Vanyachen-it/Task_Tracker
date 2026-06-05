@@ -4,7 +4,6 @@ import customtkinter as ctk
 class UIStyleHelper:
     @staticmethod
     def configure_treeview_theme():
-        """Стилизация классического Treeview под современный Fluent/Dark UI"""
         style = ttk.Style()
         style.theme_use("default")
         is_dark = ctk.get_appearance_mode() == "Dark"
